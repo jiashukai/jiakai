@@ -674,3 +674,159 @@ CREATE  PROCEDURE  ordertotal(
 ##  检查创建过程
 
     SHOW  CREATE PROCEDURE  存储过程名；显示存储过程的创建语句。
+#使用游标
+    游标是一个存储在MySQL服务器上的数据库查询，它不是一条SELECT语句，而是被该语句检索出来的结果集。在存储了游标之后，应用程序可以根据需要滚动或浏览其中的数据
+
+    MYSQL游标只能用于存储过程
+
+## 使用游标的几个明确步骤
+    （1）	在能够使用游标前，必须声明它。在这个过程实际上没有检索数据，它只是定义要使用的SELECT语句。
+    （2）	一旦声明后，必须打开游标以供使用。这个过程用前面定义的SELECT语句把数据实际检索出来
+    （3）	对于天佑数据的游标，根据需要取出各行
+    （4）	在结束游标使用时，必须关闭游标。
+    在声明游标后，可根据需要频繁地打开和关闭游标。在游标打开后，可根据需要频繁地执行取操作
+
+###创建游标
+    游标用DECLARE语句创建。DECLARE命名游标，并定义相应的SELECT语句，根据需要带WHERE和其他子句。
+
+    例如：
+    CREATE PROCEDURE  processorders()
+    BEGIN
+            DECLARE  ordernumbers  CURSOR
+            FOR
+            SELECT  order_num  FROM  orders;
+    END;
+
+    DECLARE 语句用来定义和命名游标，这里为ordernumbers。存储过程处理完成后，游标就消失了（因为它局限于存储过程）
+
+###  打开和关闭游标
+    OPEN  ordernumbers；在处理OPEN语句时执行查询
+
+    CLOSE  ordernumbers；CLOSE释放游标使用的所有内部内存和资源
+
+    在一个游标关闭后，如果没有重新打开，则不能使用它。但是使用声明过的游标不需要再次声明，用OPEN语句打开它就可以了
+
+### 使用游标数据
+    在一个游标打开后，可以使用FETCH语句分别访问它的每一行。
+    FETCH指定检索什么数据（所需的列），检索出来的数据存储在什么地方。
+
+
+    CREATE PROCEDURE  processorders()
+    BEGIN
+            DECLARE o INT；//声明数据
+            //声明游标
+            DECLARE  ordernumbers  CURSOR
+            FOR
+            SELECT  order_num  FROM  orders;
+            //打开游标
+            OPEN ordernumbers；
+            //检索数据
+            FETCH  ordersnumbers  INTO  o;
+            //关闭游标
+            CLOSE  ordernumbers；
+    END;
+
+    FETCH用来检索当前行的游标order_num列（将自动从第一行开始）到一个名为o的局部声明的变量中。对检索出的数据不做任何处理
+
+    循环：
+             REPEAT
+                    要执行的SQL语句
+             UNITL  变量名  END  REPEAT；//反复执行直到  变量为真时  停止
+
+#使用触发器
+    某条MySQL语句在事件发生时自动执行。这就是触发器。
+
+    触发器是MySQL响应以下任意语句而自动执行的一条MySQL语句（或位于BEGIN和END语句之间的一组语句）：
+    （1）	DELETE
+    （2）	INSERT
+    （3）	UPDATE
+##  创建触发器
+    创建触发器时需要给出的4条信息：
+    （1）唯一的触发器名
+    （2）触发器关联表
+    （3）触发器应该响应的活动（DELETE，INSERT或UPDATE）
+    （4）触发器何时执行
+  注意：                              
+    保持每个数据库的触发器名唯一                   
+  触发器用CREATE  TRIGGER语句创建：                 
+  命令：                             
+  CREATE  TRIGGER   触发器名1  AFTER  INSERT  ON  表名1 FOR   EACH  ROW  SELECT ‘Product added’；             
+  CREATE TRIGGER用来创建名为  触发器1的新触发器，触发器可在一个操作发生之前或之后执行，这里给出了AFTER  INSERT，所以触发器将在INSERT语句执行后执行。而FOR EACH  ROW则表示在每个插入行执行‘Product added’
+
+  只有表才支持触发器。单一个触发器不能与多个事件相关联。
+
+##  删除触发器
+      DROP TRIGGER  触发器名；
+##使用触发器
+###INSERT触发器
+      (1)在INSERT触发器代码内，可引用一个名NEW的虚拟表，访问被插入的行
+      (2)在BEFORE  INSERT触发器中，NEW中的值可以被更新
+      (3)对于AUTO_INCREMENT列，NEW在INSERT执行之前包含0，，在INSERT执行之后包含新的自动生成的值。
+
+      CREATE TRIGGER  neworder  AFTER INSERT ON orders FOR EACH ROW  SELECT  NEW.order_num;
+      在插入一个新订单到orders表时，MySQL生成一个新订单号并保存到order_num.触发器从NEW.order_num取得这个值并返回它。此触发器必须按照AFTER INSERT执行，因为在BEFORE INSERT语句执行之前，新order_num还没有生成
+
+      测试触发器：
+      INSERT INTO orders（order_date,cust_id） VALUES(NEW(),10001);
+      order_num由MySQL自动生成，而且被返回
+### DELETE触发器
+      （1）在DELETE触发器内，可以引用一个名为OLD的虚拟表，访问被删除的行
+      （2）OLD中的值全都是只读的，不可更新
+
+      例如：CREATE  TRIGGER  触发器名1 BEFORE DELETE ON orders
+            FOR  EACH  ROW
+            BEGIN
+                 INSERT  INTO archive_orders（order_num,order_date,cust_id）
+                 VALUES(OLD.order_num,OLD_order_date,OLD.cust_id);
+            END;
+    使用BEGIN   END块：触发器能容纳多条SQL语句
+###UPDATE  触发器
+      （1）在UPDATE触发器代码中，可以引用一个名为OLD的虚拟表访问以前（UPDATE更新以前）的值，引用一个名为NEW的虚拟表访问更新的值
+      （2）在BEFORE UPDATE触发器中，NEW中的值可能也被更新。
+      （3）OLD中的值全都是只读，不能更新
+
+#管理事务处理
+事务处理可以用来维护数据库的完整性，它保证成批的MySQL操作要么完全执行，要么不执行
+
+### 控制事务处理
+      管理事务处理的关键在于将SQL语句组分解为逻辑块，并明确规定数据何时应该回退。何时不应该回退。
+
+      MYSQL使用下面的语句来标识事务的开始：
+      START  TRANSACTION
+
+      MySQL的ROLLBACK命令用来回退SQL语句：
+      SELECT  * FROM 表名；
+      START TRANSACTION；
+      DELETE  FROM 表名；
+      SELECT * FROM  表名；
+      ROLLBACK；
+      ROLLBACK语句回退START  TRANSACTION之后的所有语句。
+###使用COMMIT
+      一般的MySQL语句都是直接针对数据库表执行和编写的，这就是所谓的隐含提交，即提交操作是自动进行的。
+      但是，在事务处理块中，提交不会隐含地进行。为了进行明确的提交，使用COMMIT语句
+      START   TRANSACTION；
+      DELETE  FROM  表名  WHERE  字=值；
+      DELETE  FROM  表名1 WHERE  字段1=值；
+      COMMIT；
+      最后的COMMIT仅在不出错时写出更改。如果取消，会被自动取消。
+隐含事务关闭：当COMMIT或ROLLBACK语句执行后，事务会自动关闭
+
+###使用保留点
+      简单的ROLLBACK和COMMIT语句就可以写入或撤销整个事务处理。但是，只是对简单的事务处理才能这样做，更复杂的事务处理可能需要部分提交或回退。
+
+      为了支持回退部分事务处理，必须能在事务处理块中合适的位置放置占位符  这些占位符称为保留点。
+
+      创建占位符：
+      SAVEPOINT  标识符1；
+      为了回退到本例给出的保留点：
+      ROLLBACK  TO  标识符；
+
+      保留点在事务完成后（执行一条ROLLBACK或COMMIT）后自动释放。也可以用RELASE  SAVEPOINT明确地释放保留点。
+
+为了指示MySQL不自动提交更改，需要使用一下语句：
+     SET  autocommit=0；
+autocommit标志决定是否自动提交更改，不管有没有COMMIT语句。
+
+#安全管理
+## 访问控制
+        MySQL服务器的安全基础是：用户应该对他们需要的数据具有适当的访问权，既不能多也不能少。
